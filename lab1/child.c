@@ -66,7 +66,6 @@ int main() {
     char* newStr = NULL;
     dataToString(&newStr, &strBuff, &strSize);
     float res = summ(newStr);
-    printf("%lf \n", res);
     if ((write(STDOUT_FILENO, &res, sizeof(res)) == -1)) perror("write error");
 
     return 0;
