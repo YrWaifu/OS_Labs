@@ -1,7 +1,8 @@
 #include "../include/orchestra.h"
 
-Conductor* NewConductor(){
-    Conductor* conductor = (Conductor*)malloc(sizeof(conductor));
+// Создает кондуктор
+Conductor *NewConductor() {
+    Conductor *conductor = (Conductor *)malloc(sizeof(conductor));
     conductor->size = 0;
     conductor->begin = NULL;
 
@@ -15,6 +16,7 @@ Conductor* NewConductor(){
     return conductor;
 }
 
+// Рекурсивное удаление дочерних процессов
 int recDeleteChildProcess(Conductor *conductor, Node *root, int *trace, int n) {
     if (root == NULL) {
         return 0;
@@ -23,12 +25,12 @@ int recDeleteChildProcess(Conductor *conductor, Node *root, int *trace, int n) {
 
     recDeleteChildProcess(conductor, root->left, trace, n + 1);
     recDeleteChildProcess(conductor, root->right, trace, n + 1);
-    
+
     message msg;
     msg.cmd = DELETE_CHILD;
     memset(msg.trace, 0, 100);
     memcpy(msg.trace, trace, (n + 1) * sizeof(int));
-    
+
     int toID = popFirstID(&(msg.trace));
 
     reconnectZmqSocket(conductor->requester, toID + MIN_ADDR, conductor->addr);
@@ -39,6 +41,7 @@ int recDeleteChildProcess(Conductor *conductor, Node *root, int *trace, int n) {
     return 0;
 }
 
+// Удаление дочернего процесса
 int DeleteChildProcesses(Conductor *conductor, Node *root) {
     int trace[100];
     memset(trace, 0, 100);
@@ -46,8 +49,9 @@ int DeleteChildProcesses(Conductor *conductor, Node *root) {
     return 0;
 }
 
-void DeleteConductor(Conductor* conductor) {
-    Parent* p;
+// Удаление кондуктора
+void DeleteConductor(Conductor *conductor) {
+    Parent *p;
     while (conductor->begin != NULL) {
         p = conductor->begin;
         conductor->begin = conductor->begin->next;
@@ -61,8 +65,9 @@ void DeleteConductor(Conductor* conductor) {
     return;
 }
 
-int checkExist(Conductor* conductor, int id) {
-    Parent* p = conductor->begin;
+// Наличие узла с заданным id
+int checkExist(Conductor *conductor, int id) {
+    Parent *p = conductor->begin;
     while (p != NULL) {
         if (p->id == id) {
             return 1;
@@ -72,9 +77,10 @@ int checkExist(Conductor* conductor, int id) {
     return 0;
 }
 
-int AddParent(Conductor* conductor, int id, int *pid) {
+// Добавляет нового родителя в кондуктор
+int AddParent(Conductor *conductor, int id, int *pid) {
     if (conductor->begin == NULL) {
-        Parent* parent = (Parent*)malloc(sizeof(Parent));
+        Parent *parent = (Parent *)malloc(sizeof(Parent));
         parent->id = id;
         parent->next = NULL;
         parent->prev = NULL;
@@ -83,12 +89,11 @@ int AddParent(Conductor* conductor, int id, int *pid) {
         conductor->begin = parent;
         conductor->end = parent;
         conductor->size = 1;
-    }
-    else {
+    } else {
         if (checkExist(conductor, id)) {
             return ErrorParentAlreadyExist;
         }
-        Parent* parent = (Parent*)malloc(sizeof(Parent));
+        Parent *parent = (Parent *)malloc(sizeof(Parent));
         parent->id = id;
         parent->next = NULL;
         parent->prev = conductor->end;
@@ -100,11 +105,12 @@ int AddParent(Conductor* conductor, int id, int *pid) {
     }
 
     conductor->end->root = insertNode(conductor->end->root, id);
-    
+
     int err = CreateChildProcess("child", id, pid, 1);
     return err;
 }
 
+// Меняет роль
 void ChangeRole(void *requester, char *addr, int toID) {
     message msg;
     memset(msg.trace, 0, 100);
@@ -115,16 +121,17 @@ void ChangeRole(void *requester, char *addr, int toID) {
     receiveMessage(requester, &msg);
 }
 
-int DeleteParent(Conductor* conductor, int id) {
+// Удаление родителя
+int DeleteParent(Conductor *conductor, int id) {
     if (conductor->begin == NULL) {
         return ErrorNotFoundParent;
-    } 
+    }
 
-    Parent* pIter = conductor->begin;
+    Parent *pIter = conductor->begin;
     if (conductor->size == 1 && pIter->id == id) {
         DeleteChildProcesses(conductor, pIter->root);
         deleteTree(pIter->root);
-        conductor->begin = conductor->end = NULL; 
+        conductor->begin = conductor->end = NULL;
         free(pIter);
         return 0;
     }
@@ -141,7 +148,7 @@ int DeleteParent(Conductor* conductor, int id) {
     deleteTree(pIter->root);
 
     Parent *prev = pIter->prev, *next = pIter->next;
-    if (prev != NULL) { 
+    if (prev != NULL) {
         pIter->prev->next = next;
     } else {
         conductor->begin = next;
@@ -157,11 +164,11 @@ int DeleteParent(Conductor* conductor, int id) {
     return 0;
 }
 
-int AmountParents(Conductor* c) {
-    return c->size;
-}
+// Количество родителей
+int AmountParents(Conductor *c) { return c->size; }
 
-int AddChild(Conductor* conductor, int parentID, int childID, int *pid) {
+// Добавляет ребенка к указанному родителю
+int AddChild(Conductor *conductor, int parentID, int childID, int *pid) {
     if (conductor->begin == NULL) {
         return ErrorNotFoundParent;
     }
@@ -177,7 +184,7 @@ int AddChild(Conductor* conductor, int parentID, int childID, int *pid) {
         }
         if (nodeExist(pIter->root, childID)) {
             return ErrorChildAlreadyExist;
-        } 
+        }
         pIter = pIter->next;
     }
 
@@ -197,9 +204,9 @@ int AddChild(Conductor* conductor, int parentID, int childID, int *pid) {
         message msg;
         msg.error = 0;
         int toParent = parentIter->root->id;
-        int toChild =  parentIter->id;
+        int toChild = parentIter->id;
         parentIter->id = parentIter->root->id;
-        
+
         ChangeRole(conductor->requester, conductor->addr, toParent);
         ChangeRole(conductor->requester, conductor->addr, toChild);
     }
@@ -207,7 +214,8 @@ int AddChild(Conductor* conductor, int parentID, int childID, int *pid) {
     return err;
 }
 
-int DeleteChild(Conductor* conductor, int parentID, int childID) {
+// Удаление ребенка
+int DeleteChild(Conductor *conductor, int parentID, int childID) {
     if (conductor->begin == NULL) {
         return ErrorNotFoundParent;
     }
@@ -230,7 +238,7 @@ int DeleteChild(Conductor* conductor, int parentID, int childID) {
                 }
             }
             break;
-        } 
+        }
         pIter = pIter->next;
     }
 
@@ -241,7 +249,8 @@ int DeleteChild(Conductor* conductor, int parentID, int childID) {
     return 0;
 }
 
-int PingNode(Conductor* conductor, int id, int *pid) {
+// Проверка доступности процесса
+int PingNode(Conductor *conductor, int id, int *pid) {
     if (conductor->begin == NULL) {
         return ErrorNotFoundNode;
     }
@@ -260,6 +269,7 @@ int PingNode(Conductor* conductor, int id, int *pid) {
     return ErrorNotFoundNode;
 }
 
+// Подсчет пути от родителя до указанного узла
 int CountTrace(Conductor *conductor, int *trace, int childID) {
     Parent *pIter = conductor->begin;
     while (pIter != NULL) {
@@ -273,12 +283,13 @@ int CountTrace(Conductor *conductor, int *trace, int childID) {
     return ErrorNotFoundNode;
 }
 
-int CreateChildProcess(char *childName, int id, int *pid, int isParent){
+// Создание нового процесса
+int CreateChildProcess(char *childName, int id, int *pid, int isParent) {
     char argID[MN];
     sprintf(argID, "%d", id);
     char argIsParent[MN];
     sprintf(argIsParent, "%d", isParent);
-    char *args[] = {childName, argID, argIsParent, NULL}; 
+    char *args[] = {childName, argID, argIsParent, NULL};
     *pid = fork();
     if (*pid == -1) {
         return ErrorInCreateChildProccess;
@@ -289,6 +300,7 @@ int CreateChildProcess(char *childName, int id, int *pid, int isParent){
     return 0;
 }
 
+// Вывод всего оркестра
 void PrintOrchestra(Conductor *conductor) {
     Parent *pIter = conductor->begin;
     while (pIter != NULL) {
@@ -298,6 +310,7 @@ void PrintOrchestra(Conductor *conductor) {
     }
 }
 
+// Поп первого элемента пути
 int popFirstID(int *trace) {
     int fID = trace[0];
     int i = 0;
@@ -309,24 +322,25 @@ int popFirstID(int *trace) {
 }
 
 int main(int argc, char const *argv[]) {
-
     if (argc < 2) {
         printf("error: amount argv\n");
         return 1;
     }
-    
+
     int orchestraID = atoi(argv[1]);
 
     int pid = getpid();
     printf("orchestra [%d] has been created\n", pid);
 
-    Conductor* conductor = NewConductor();
-    
+    // Создание кондуктора
+    Conductor *conductor = NewConductor();
+
+    // Создается адрес сервера и устанавливается связь с сокетом оркестра
     char orchestraAddr[30] = SERVER_SOCKET_PATTERN;
     createAddr(&orchestraAddr, orchestraID + MIN_ADDR);
     bindZmqSocket(conductor->responder, orchestraAddr);
 
-    message msg = {cmd: -1};
+    message msg = {cmd : -1};
     char *command;
     int err, toParentID;
     int bExit = 0;
@@ -334,101 +348,101 @@ int main(int argc, char const *argv[]) {
         receiveMessage(conductor->responder, &msg);
 
         switch (msg.cmd) {
-        case CREATE_CHILD:
-            if (msg.childID < 1 || msg.parentID < 1) {
-                msg.error = ErrorIncorrectData;
+            case CREATE_CHILD:
+                if (msg.childID < 1 || msg.parentID < 1) {
+                    msg.error = ErrorIncorrectData;
+                    sendMessage(conductor->responder, &msg);
+                    break;
+                }
+
+                err = AddChild(conductor, msg.parentID, msg.childID, &(msg.pid));
+                if (err != 0) {
+                    msg.error = err;
+                    sendMessage(conductor->responder, &msg);
+                    break;
+                }
+
                 sendMessage(conductor->responder, &msg);
                 break;
-            }
 
-            err = AddChild(conductor, msg.parentID, msg.childID, &(msg.pid));
-            if (err != 0) {
-                msg.error = err;
+            case CREATE_PARENT:
+                if (msg.parentID < 1) {
+                    msg.error = ErrorIncorrectData;
+                    sendMessage(conductor->responder, &msg);
+                    break;
+                }
+
+                msg.error = AddParent(conductor, msg.parentID, &msg.pid);
                 sendMessage(conductor->responder, &msg);
                 break;
-            }
 
-            sendMessage(conductor->responder, &msg);
-            break;
+            case DELETE_CHILD:
+                err = CountTrace(conductor, &(msg.trace), msg.childID);
+                if (err != 0) {
+                    msg.error = err;
+                    sendMessage(conductor->responder, &msg);
+                    break;
+                }
 
-        case CREATE_PARENT:
-            if (msg.parentID < 1) {
-                msg.error = ErrorIncorrectData;
+                toParentID = popFirstID(&(msg.trace));
+
+                reconnectZmqSocket(conductor->requester, toParentID + MIN_ADDR, conductor->addr);
+                sendMessage(conductor->requester, &msg);
+                receiveMessage(conductor->requester, &msg);
+
+                msg.error = DeleteChild(conductor, msg.parentID, msg.childID);
                 sendMessage(conductor->responder, &msg);
                 break;
-            }
 
-            msg.error = AddParent(conductor, msg.parentID, &msg.pid);
-            sendMessage(conductor->responder, &msg);
-            break;
-        
-        case DELETE_CHILD:
-            err = CountTrace(conductor, &(msg.trace), msg.childID);
-            if (err != 0) {
-                msg.error = err;
+            case DELETE_PARENT:
+                msg.error = DeleteParent(conductor, msg.parentID);
                 sendMessage(conductor->responder, &msg);
                 break;
-            }
 
-            toParentID = popFirstID(&(msg.trace));
-
-            reconnectZmqSocket(conductor->requester, toParentID + MIN_ADDR, conductor->addr);
-            sendMessage(conductor->requester, &msg);
-            receiveMessage(conductor->requester, &msg);
-            
-            msg.error = DeleteChild(conductor, msg.parentID, msg.childID);
-            sendMessage(conductor->responder, &msg);
-            break;
-
-        case DELETE_PARENT:
-            msg.error = DeleteParent(conductor, msg.parentID);                
-            sendMessage(conductor->responder, &msg);
-            break;
-
-        case PING_NODE:
-            if (msg.pid < 0) {
-                msg.error = ErrorIncorrectData;
+            case PING_NODE:
+                if (msg.pid < 0) {
+                    msg.error = ErrorIncorrectData;
+                    sendMessage(conductor->responder, &msg);
+                    break;
+                }
+                if (msg.pid == 0) {
+                    msg.error = 0;
+                    msg.pid = getpid();
+                    sendMessage(conductor->responder, &msg);
+                    break;
+                }
+                msg.error = PingNode(conductor, msg.pid, &(msg.pid));
                 sendMessage(conductor->responder, &msg);
                 break;
-            }
-            if (msg.pid == 0) {
+
+            case CMD_START:
+            case CMD_STOP:
+            case CMD_TIME:
+                err = CountTrace(conductor, &(msg.trace), msg.childID);
+                if (err != 0) {
+                    msg.error = err;
+                    sendMessage(conductor->responder, &msg);
+                    break;
+                }
+
+                toParentID = popFirstID(&(msg.trace));
+
+                reconnectZmqSocket(conductor->requester, toParentID + MIN_ADDR, conductor->addr);
+                sendMessage(conductor->requester, &msg);
+                receiveMessage(conductor->requester, &msg);
+
+                sendMessage(conductor->responder, &msg);
+                break;
+
+            case PRINT_ORCHESTRA:
+                PrintOrchestra(conductor);
                 msg.error = 0;
-                msg.pid = getpid();
                 sendMessage(conductor->responder, &msg);
                 break;
-            }
-            msg.error = PingNode(conductor, msg.pid, &(msg.pid));
-            sendMessage(conductor->responder, &msg);
-            break;
-
-        case CMD_START: 
-        case CMD_STOP: 
-        case CMD_TIME:
-            err = CountTrace(conductor, &(msg.trace), msg.childID);
-            if (err != 0) {
-                msg.error = err;
-                sendMessage(conductor->responder, &msg);
+            case EXIT:
+                DeleteConductor(conductor);
+                bExit = 1;
                 break;
-            }
-
-            toParentID = popFirstID(&(msg.trace));
-
-            reconnectZmqSocket(conductor->requester, toParentID + MIN_ADDR, conductor->addr);
-            sendMessage(conductor->requester, &msg);
-            receiveMessage(conductor->requester, &msg);
-            
-            sendMessage(conductor->responder, &msg);
-            break;
-
-        case PRINT_ORCHESTRA:
-            PrintOrchestra(conductor);
-            msg.error = 0;
-            sendMessage(conductor->responder, &msg);
-            break;
-        case EXIT: 
-            DeleteConductor(conductor);
-            bExit = 1;
-            break;
         }
     }
     printf("orchestra[%d]: by by\n", getpid());

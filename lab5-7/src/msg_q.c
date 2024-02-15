@@ -1,5 +1,6 @@
 #include "../include/msg_q.h"
 
+// Слияние адреса и айдишника
 void createAddr(char* addr, int id) {
     char strID[MN];
     memset(strID, 0, MN);
@@ -9,6 +10,7 @@ void createAddr(char* addr, int id) {
     strcat(addr, strID);
 }
 
+// Возвращает ссылку на новый контекст
 void* createZmqContext() {
     void* context = zmq_ctx_new();
     if (context == NULL) {
@@ -19,6 +21,7 @@ void* createZmqContext() {
     return context;
 }
 
+// Привязка сокета к определенному адресу
 void bindZmqSocket(void* socket, char* addr) {
     if (zmq_bind(socket, addr) != 0) {
         fprintf(stderr, "[%d] ", getpid());
@@ -27,6 +30,7 @@ void bindZmqSocket(void* socket, char* addr) {
     }
 }
 
+// Отвязка сокета от адреса
 void disconnectZmqSocket(void* socket, char* addr) {
     if (zmq_disconnect(socket, addr) != 0) {
         fprintf(stderr, "[%d] ", getpid());
@@ -35,6 +39,7 @@ void disconnectZmqSocket(void* socket, char* addr) {
     }
 }
 
+// Подключение сокета к адресу
 void connectZmqSocket(void* socket, char* addr) {
     if (zmq_connect(socket, addr) != 0) {
         fprintf(stderr, "[%d] ", getpid());
@@ -43,6 +48,7 @@ void connectZmqSocket(void* socket, char* addr) {
     }
 }
 
+// Создание сокета в рамках контекста
 void* createZmqSocket(void* context, const int type) {
     void* socket = zmq_socket(context, type);
     if (socket == NULL) {
@@ -53,14 +59,16 @@ void* createZmqSocket(void* context, const int type) {
     return socket;
 }
 
+// Переподключение сокета к новому адресу
 void reconnectZmqSocket(void* socket, int to, char* addr) {
-    if (addr[16] != '\0') {
+    if (addr[16] != '\0') {  // Проверка на пустоту адреса
         disconnectZmqSocket(socket, addr);
     }
     createAddr(addr, to);
     connectZmqSocket(socket, addr);
 }
 
+// Закрытие сокета
 void closeZmqSocket(void* socket) {
     if (zmq_close(socket) != 0) {
         fprintf(stderr, "[%d] ", getpid());
@@ -69,6 +77,7 @@ void closeZmqSocket(void* socket) {
     }
 }
 
+// Уничтожение контекста
 void deleteZmqContext(void* context) {
     if (zmq_ctx_destroy(context) != 0) {
         fprintf(stderr, "[%d] ", getpid());
@@ -77,9 +86,11 @@ void deleteZmqContext(void* context) {
     }
 }
 
+// Прием сообщение из сокета и запись в msg
 int receiveMessage(void* socket, message* msg) {
     zmq_msg_t reply;
     zmq_msg_init(&reply);
+    // Прием сообщений
     if (zmq_msg_recv(&reply, socket, 0) == -1) {
         zmq_msg_close(&reply);
         fprintf(stderr, "[%d] ", getpid());
@@ -95,6 +106,7 @@ int receiveMessage(void* socket, message* msg) {
     return 1;
 }
 
+// Отправка сообщений в сокет
 int sendMessage(void* socket, message* msg) {
     zmq_msg_t zmqMsg;
     zmq_msg_init(&zmqMsg);
@@ -115,7 +127,7 @@ int sendMessage(void* socket, message* msg) {
     return 1;
 }
 
-int pingProcess(int id, int *pid) {
+int pingProcess(int id, int* pid) {
     char addr_monitor[30];
     char addr_connection[30];
     char strID[30];
@@ -129,22 +141,23 @@ int pingProcess(int id, int *pid) {
     strcat(addr_connection, strID);
 
     void* context = zmq_ctx_new();
-    void *requester = zmq_socket(context, ZMQ_REQ);
+    void* requester = zmq_socket(context, ZMQ_REQ);
 
-    zmq_socket_monitor(requester, addr_monitor, ZMQ_EVENT_CONNECTED | ZMQ_EVENT_CONNECT_RETRIED);
-    void *socket = zmq_socket(context, ZMQ_PAIR);
+    zmq_socket_monitor(requester, addr_monitor,
+                       ZMQ_EVENT_CONNECTED | ZMQ_EVENT_CONNECT_RETRIED);  // Мониторинг событий подключени
+    void* socket = zmq_socket(context, ZMQ_PAIR);  // Сокет для обмена данными
     zmq_connect(socket, addr_monitor);
     zmq_connect(requester, addr_connection);
 
     zmq_msg_t msg;
     zmq_msg_init(&msg);
     zmq_msg_recv(&msg, socket, 0);
+    // Успешное подключение
     uint8_t* data = (uint8_t*)zmq_msg_data(&msg);
     uint16_t event = *(uint16_t*)(data);
 
-    
     int answer = event != ZMQ_EVENT_CONNECT_RETRIED;
-    
+
     if (answer == 1) {
         message msg;
         msg.cmd = PING_NODE;
@@ -155,7 +168,7 @@ int pingProcess(int id, int *pid) {
             return msg.error;
         }
         *pid = msg.pid;
-    } 
+    }
 
     zmq_close(requester);
     zmq_close(socket);

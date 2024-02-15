@@ -1,8 +1,7 @@
 #include "../include/include.h"
 #include "../include/orchestra.h"
 
-int main(){
-    
+int main() {
     printf("main [%d] has been created\n\n", getpid());
 
     printMenu();
@@ -19,7 +18,7 @@ int main(){
 
     char command[20];
     int parentID, childID, t, id;
-    while(1) {
+    while (1) {
         scanf("%s", &command);
         msg.error = 0;
 
@@ -34,53 +33,53 @@ int main(){
             scanf("%s", &command);
             if (strcmp(&command, "child") == 0) {
                 scanf("%d %d", &childID, &parentID);
-                
+
                 msg.cmd = CREATE_CHILD;
                 msg.childID = childID;
                 msg.parentID = parentID;
                 sendMessage(requester, &msg);
-                
+
                 receiveMessage(requester, &msg);
                 errorHandle(msg.error, msg.pid);
 
                 continue;
-            } 
+            }
             if (strcmp(&command, "parent") == 0) {
                 scanf("%d", &parentID);
-                
+
                 msg.cmd = CREATE_PARENT;
                 msg.parentID = parentID;
                 sendMessage(requester, &msg);
-                
+
                 receiveMessage(requester, &msg);
                 errorHandle(msg.error, msg.pid);
 
                 continue;
-            }  
+            }
         }
-        
+
         if (strcmp(command, "remove") == 0) {
             scanf("%s", command);
             if (strcmp(command, "child") == 0) {
                 scanf("%d %d", &childID, &parentID);
-                
+
                 msg.cmd = DELETE_CHILD;
                 msg.childID = childID;
                 msg.parentID = parentID;
                 sendMessage(requester, &msg);
-                
+
                 receiveMessage(requester, &msg);
                 errorHandle(msg.error, msg.pid);
 
                 continue;
-            } 
+            }
             if (strcmp(command, "parent") == 0) {
                 scanf("%d", &parentID);
-                
+
                 msg.cmd = DELETE_PARENT;
                 msg.parentID = parentID;
                 sendMessage(requester, &msg);
-                
+
                 receiveMessage(requester, &msg);
                 errorHandle(msg.error, msg.pid);
 
@@ -92,30 +91,27 @@ int main(){
             scanf("%d %s", &childID, &command);
             msg.childID = childID;
             if (strcmp(&command, "start") == 0) {
-                
                 msg.cmd = CMD_START;
                 sendMessage(requester, &msg);
-                
+
                 receiveMessage(requester, &msg);
                 errorHandle(msg.error, msg.pid);
 
                 continue;
-            } 
+            }
             if (strcmp(&command, "stop") == 0) {
-
                 msg.cmd = CMD_STOP;
                 sendMessage(requester, &msg);
-                
+
                 receiveMessage(requester, &msg);
                 errorHandle(msg.error, msg.pid);
 
                 continue;
-            } 
+            }
             if (strcmp(&command, "time") == 0) {
-
                 msg.cmd = CMD_TIME;
                 sendMessage(requester, &msg);
-                
+
                 receiveMessage(requester, &msg);
                 errorHandle(msg.error, msg.pid);
 
@@ -126,12 +122,12 @@ int main(){
                 }
 
                 continue;
-            } 
+            }
         }
 
         if (strcmp(&command, "ping") == 0) {
             scanf("%d", &id);
-            
+
             msg.cmd = PING_NODE;
             msg.pid = id;
             sendMessage(requester, &msg);
@@ -162,19 +158,19 @@ void errorHandle(int error, int pid) {
         case ErrorNotFoundParent:
             printf("Error [%d]: Parent not found\n", pid);
             break;
-    
+
         case ErrorParentAlreadyExist:
             printf("Error [%d]: Parent Already exists\n", pid);
             break;
-    
+
         case ErrorNotFoundChild:
             printf("Error [%d]: Child not found\n", pid);
             break;
-    
+
         case ErrorChildAlreadyExist:
             printf("Error [%d]: Child Already exists\n", pid);
             break;
-    
+
         case ErrorInCreateChildProccess:
             printf("Error [%d]: Create Child Proccess\n", pid);
             break;
@@ -207,7 +203,7 @@ void printMenu() {
 int OrchestraHandleRequest(int baseID, int *pid) {
     char argBaseID[MN];
     sprintf(argBaseID, "%d", baseID);
-    char *args[] = {"orchestra", argBaseID, NULL}; 
+    char *args[] = {"orchestra", argBaseID, NULL};
     *pid = fork();
     if (*pid == -1) {
         return ErrorInCreateChildProccess;

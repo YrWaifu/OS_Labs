@@ -1,6 +1,7 @@
 #include "../include/tree.h"
 
-void recTrace(Node *root, int id, int *trace, int i, int *size) {
+// Поиск пути от корня дерева до заданного узла
+void recTrace(Node* root, int id, int* trace, int i, int* size) {
     if (*size != 0 || root == NULL) {
         return;
     }
@@ -12,8 +13,9 @@ void recTrace(Node *root, int id, int *trace, int i, int *size) {
     recTrace(root->right, id, trace, i + 1, size);
 }
 
-int countTrace(Node *root, int id, int *trace) {
-    int n = 0; 
+// Подсчет следа от корня до узла
+int countTrace(Node* root, int id, int* trace) {
+    int n = 0;
     recTrace(root, id, trace, 0, &n);
     if (n == 0) {
         return 0;
@@ -25,7 +27,8 @@ int countTrace(Node *root, int id, int *trace) {
     return 1;
 }
 
-int nodeExist(Node *root, int id) {
+// Проверка на существование id
+int nodeExist(Node* root, int id) {
     if (root == NULL) {
         return 0;
     }
@@ -36,29 +39,29 @@ int nodeExist(Node *root, int id) {
 }
 
 int Max(int a, int b) {
-    if (a > b) 
-        return a;
+    if (a > b) return a;
     return b;
 }
 
+// Создание нового узла
 Node* makeNode(int id) {
-    Node *node = (Node*)malloc(sizeof(Node));
+    Node* node = (Node*)malloc(sizeof(Node));
     node->id = id;
     node->height = 1;
     node->left = node->right = NULL;
     return node;
 }
 
+// Высота узла в дереве
 int height(Node* node) {
-    if (node != NULL) 
-        return node->height;
+    if (node != NULL) return node->height;
     return 0;
 }
 
-int balanceFactor(Node* node) {
-    return height(node->right) - height(node->left);
-}
+// Балансный фактор числа
+int balanceFactor(Node* node) { return height(node->right) - height(node->left); }
 
+// Обновление высоты узла
 void fixHeight(Node* node) {
     int h1 = height(node->left);
     int h2 = height(node->right);
@@ -83,6 +86,7 @@ Node* rotateLeft(Node* q) {
     return p;
 }
 
+// Балансирование
 Node* balance(Node* p) {
     fixHeight(p);
     if (balanceFactor(p) == 2) {
@@ -100,6 +104,7 @@ Node* balance(Node* p) {
     return p;
 }
 
+// Вставка нового узла и балансировка его
 Node* insertNode(Node* root, int id) {
     if (!root) {
         return makeNode(id);
@@ -112,15 +117,15 @@ Node* insertNode(Node* root, int id) {
     return balance(root);
 }
 
+// Поиск минимального значения
 int searchMin(Node* root) {
-    if (root->left == NULL)
-        return root->id;
+    if (root->left == NULL) return root->id;
     return searchMin(root->left);
 }
 
+// Удаление узла без балансировки
 Node* unbalancedDeleteNode(Node* root, int id) {
-    if (root == NULL)
-        return root;
+    if (root == NULL) return root;
     if (id < root->id) {
         root->left = unbalancedDeleteNode(root->left, id);
         return root;
@@ -133,7 +138,7 @@ Node* unbalancedDeleteNode(Node* root, int id) {
         root->id = searchMin(root->right);
         root->right = unbalancedDeleteNode(root->right, root->id);
         return root;
-    } 
+    }
     if (root->left != NULL) {
         Node* c = root;
         root = root->left;
@@ -150,14 +155,14 @@ Node* unbalancedDeleteNode(Node* root, int id) {
     }
     free(root);
     root = NULL;
-    
+
     return root;
 }
 
-Node* deleteNode(Node* root, int id) {
-    return balance(unbalancedDeleteNode(root, id));
-}
+// Удаление узла и балансировка
+Node* deleteNode(Node* root, int id) { return balance(unbalancedDeleteNode(root, id)); }
 
+// Удаление всех узлов дерева
 void deleteTree(Node* tree) {
     if (tree != NULL) {
         deleteTree(tree->left);
@@ -166,6 +171,7 @@ void deleteTree(Node* tree) {
     }
 }
 
+// вывод значения узла с отступом
 void printValue(int value, int indent) {
     while (indent--) {
         printf(" ");
@@ -173,6 +179,7 @@ void printValue(int value, int indent) {
     printf("%d\n", value);
 }
 
+// Печать значений узлов
 void indexCount(Node* tree, int indent) {
     if (tree == NULL) {
         return;
@@ -182,10 +189,10 @@ void indexCount(Node* tree, int indent) {
     indexCount(tree->left, indent + 3);
 }
 
-void printTree(Node* tree) {
-    indexCount(tree, 0);
-}
+// Вывод дерева
+void printTree(Node* tree) { indexCount(tree, 0); }
 
+// Подсчет количества узлов в дереве
 int countSize(Node* tree) {
     if (tree == NULL) {
         return 0;
