@@ -345,6 +345,7 @@ int main(int argc, char const *argv[]) {
     int err, toParentID;
     int bExit = 0;
     while (!bExit) {
+        // Ожидание сообщений от других процессов
         receiveMessage(conductor->responder, &msg);
 
         switch (msg.cmd) {
